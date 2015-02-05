@@ -1,0 +1,6 @@
+name = Menu item entity render
+core = 7.x
+description = Enables the rendering of entity view modes inside a link.
+package = Other
+dependencies[] = menu
+

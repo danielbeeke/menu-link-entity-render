@@ -1,0 +1,91 @@
+<?php
+/**
+ * @file
+ * This module makes it possible to render menu items
+ * from entities as an object.
+ */
+
+/**
+ * Inform the menu_attributes module about custom attributes.
+ *
+ * @return array
+ *   An array of attributes to be controlled by Menu Attributes, keyed by
+ *   attribute name. Each attribute record should be an array with the following
+ *   key/value pairs:
+ *   - label: The human-readable name of the attribute.
+ *   - description: The attribute description.
+ *   - form: A Form API array. Some default values for this array are provided
+ *     in menu_attributes_get_menu_attribute_info().
+ *   - scope: An array of scope options, MENU_ATTRIBUTES_LINK or
+ *     MENU_ATTRIBUTES_ITEM or both. If no scope is provided, both will
+ *     be assumed.
+ *
+ * @see menu_attributes_menu_attribute_info()
+ * @see menu_attributes_get_menu_attribute_info()
+ */
+function menu_link_entity_render_menu_attribute_info() {
+  $entity_info = entity_get_info();
+  $options = array('' => t('-Unused-'));
+
+  foreach ($entity_info as $entity_type => $entity_type_info) {
+    if (isset($entity_type_info['view modes'])) {
+      foreach ($entity_type_info['view modes'] as $view_mode => $view_mode_info) {
+        $options[$entity_type][$view_mode] = $view_mode_info['label'];
+      }
+    }
+  }
+
+  $info['render_entity'] = array(
+    'label' => t('Render the entity'),
+    'description' => t('Render the entity'),
+    'form' => array(
+      '#type' => 'select',
+      '#title' => t('View mode'),
+      '#options' => $options,
+    ),
+    'scope' => array(MENU_ATTRIBUTES_ITEM),
+  );
+
+  $info['render_entity_blocks'] = array(
+    'label' => t('Block bids'),
+    'description' => t('Enter the block bids separated with a space'),
+    'form' => array(
+      '#title' => t('Blocks'),
+    ),
+    'scope' => array(MENU_ATTRIBUTES_ITEM),
+  );
+
+  return $info;
+}
+
+/**
+ * Implements MODULE_preprocess_HOOK().
+ *
+ * Adds appropriate attributes to the list item.
+ *
+ * @see theme_menu_link()
+ */
+function menu_link_entity_render_preprocess_menu_link(&$variables) {
+  if (isset($variables['element']['#original_link']['options']['item_attributes']['render_entity'])) {
+    $view_mode = $variables['element']['#original_link']['options']['item_attributes']['render_entity'];
+    $bids = $variables['element']['#original_link']['options']['item_attributes']['render_entity_blocks'];
+    $link_path = $variables['element']['#original_link']['link_path'];
+
+    $link_path_explode = explode('/', $link_path);
+
+    $show_on_bids = explode(' ', $bids);
+
+    if (in_array($variables['element']['#bid']['module'] . '-' . $variables['element']['#bid']['delta'], $show_on_bids)) {
+      $entity_type = $link_path_explode[0];
+      $entity_id = $link_path_explode[1];
+
+      $entity = entity_load_single($entity_type, $entity_id);
+
+      $entity_prepared = entity_view($entity_type, array($entity), $view_mode);
+
+      $variables['element']['#title'] = render($entity_prepared);
+      $variables['element']['#localized_options']['html'] = TRUE;
+    }
+
+  }
+}
